@@ -7,5 +7,5 @@ timeout = 1            # Timeout value in seconds
 max_channel = 7        # Maximum number of channels of the Modbus device model (7 - 0-7, as 8 channels summary)
 
 [paths]
-lock_file = /tmp/modbus_controller.lock
-log_file = /tmp/modbus_controller.log
+lock_file = modbus_controller.lock
+log_file = modbus_logs/modbus_controller.log

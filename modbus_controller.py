@@ -4,7 +4,7 @@
 # Description : Control Modbus coils via TCP (Modbus RTU over TCP).
 # Usage       : python3 modbus_controller.py <status|on|off|toggle> <channel>
 # Author      : syr4ok (Andrii Syrovatko)
-# Version     : 1.0.0-linux
+# Version     : 1.1.0b
 # =============================================================================
 import configparser
 import os
@@ -13,7 +13,8 @@ import sys
 import time
 import subprocess
 import logging
-import fcntl
+from pathlib import Path
+import atexit
 
 # Read configuration (variables will be used later in the code)
 config = configparser.ConfigParser(inline_comment_prefixes=('#', ';'))
@@ -28,36 +29,60 @@ COIL_BASE = config.getint('modbus', 'coil_base')
 TIMEOUT = config.getint('modbus', 'timeout')
 MAX_CHANNEL = config.getint('modbus', 'max_channel')
 
-LOCK_FILE = config.get('paths', 'lock_file')
-LOG_FILE = config.get('paths', 'log_file')
+# We get the path to the folder where the script is located
+BASE_DIR = Path(__file__).parent.resolve()
 
-log_dir = os.path.dirname(LOG_FILE)
-if not os.path.exists(log_dir):
+# You can read values ​​in the config, and if they are empty or relative, process them:
+def get_path(config_value, default_name):
+    path = Path(config_value)
+    return path if path.is_absolute() else BASE_DIR / path
+
+LOG_FILE = get_path(config.get('paths', 'log_file'), "modbus.log")
+LOCK_FILE = get_path(config.get('paths', 'lock_file'), "modbus.lock")
+
+# Creating a folder for logs (works on both OSes)
+LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+# Locker init
+lock_fp = None
+def acquire_lock(lock_file):
+    global lock_fp
     try:
-        os.makedirs(log_dir, exist_ok=True)
-    except OSError as e:
-        print(f"Error: Cannot create log directory {log_dir}: {e}")
-        # Use local log file as instead
-        LOG_FILE = "modbus_controller.log"
+        lock_fp = open(lock_file, 'w')
+        if sys.platform == 'win32':
+            import msvcrt
+            msvcrt.locking(lock_fp.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        atexit.register(lock_fp.close) # Close when leaving
+        return True
+    except (OSError, IOError, BlockingIOError):
+        return False
+
+if not acquire_lock(LOCK_FILE):
+    print("Another instance is already running.")
+    sys.exit(1)
+
+# -------- LOCK TEST ----------
+# print("Lock acquired! Sleeping for 20 seconds... Quick! Run another instance!")
+# time.sleep(20)
+# -----------------------------
 
 logging.basicConfig(
-    filename=LOG_FILE,
+    filename=str(LOG_FILE),
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d at %H:%M:%S"
 )
 
-lock_fp = open(LOCK_FILE, "w")
-try:
-    fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
-except BlockingIOError:
-    print("Another instance is already running.")
-    sys.exit(1)
-
 def is_host_reachable(host):
+    # Determine the ping parameter based on the operating system
+    param = "-n" if sys.platform.lower() == "win32" else "-c"
     try:
         result = subprocess.run(
-            ["ping", "-c", "1", "-W", "1", host],
+            ["ping", param, "1", "-w", "1000", host],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
@@ -135,11 +160,11 @@ if len(sys.argv) != 3:
 command_input = sys.argv[1].lower()
 channel_input = sys.argv[2]
 
-# Converting ON/OFF into a command
+# Accepting "ON"/"OFF" as commands
 if command_input in ['on', 'off', 'toggle', 'status']:
     command = command_input
 else:
-    # Attempt to accept "ON"/"OFF" as a command
+    # Try to accept "ON"/"OFF" in any case as well
     if command_input.upper() == 'ON':
         command = 'on'
     elif command_input.upper() == 'OFF':
@@ -211,3 +236,4 @@ except (socket.timeout, ConnectionRefusedError, OSError) as e:
     sys.exit(1)
 
 sys.exit(0)
+
