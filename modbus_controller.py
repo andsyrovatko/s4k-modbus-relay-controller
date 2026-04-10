@@ -4,7 +4,7 @@
 # Description : Control Modbus coils via TCP (Modbus RTU over TCP).
 # Usage       : python3 modbus_controller.py <status|on|off|toggle> <channel>
 # Author      : syr4ok (Andrii Syrovatko)
-# Version     : 1.1.0b
+# Version     : 1.1.0
 # =============================================================================
 import configparser
 import os

@@ -7,9 +7,10 @@ Designed for stability in production environments where reliability is key.
 
 ### 📋 Features
 * **Direct Socket Communication:** No heavy libraries like `pymodbus` required.
-* **Instance Protection:** Uses `fcntl` file locking to prevent race conditions during concurrent executions.
+* **Cross-Platform:** Full support for `Linux` and `Windows`.
 * **Health Checks:** Integrated `ICMP` ping check before command execution.
 * **Configurable:** All parameters (IP, Port, Channels) are stored in an external `.ini` file.
+* **Smart Paths:** Uses `pathlib` for automatic directory creation (e.g., `logs/` folder).
 * **Detailed Logging:** Full audit trail of all `ON/OFF/TOGGLE` actions.
 
 ---
@@ -17,9 +18,8 @@ Designed for stability in production environments where reliability is key.
 ### 💻 Requirements
 | Requirement | Value |
 | :--- | :--- |
-| **OS** | Linux (Ubuntu, Debian, LMDE, etc.) |
-| **Python** | 3.6+ |
-| **Permissions** | Write access to log/lock paths |
+| **OS** | Linux, Windows, FreeBSD |
+| **Python** | 3.6+ (standard library only) |
 
 ---
 
@@ -32,56 +32,58 @@ Designed for stability in production environments where reliability is key.
 | **`[modbus]`** | `coil_base` | Channel base num (`0` or `1`) | `1` |
 | **`[modbus]`** | `timeout` | Socket timeout (sec) (only view) | `1` |
 | **`[modbus]`** | `max_channel`| Max channel index (e.g., `7`). `7` for `coil_base=1` too. | `7` |
-| **`[paths]`** | `lock_file` | Path to `.lock` file | `/tmp/modbus.lock` |
-| **`[paths]`** | `log_file`  | Path to `.log` file | `/tmp/modbus.log` |
+| **`[paths]`** | `lock_file` | Path to `.lock` file | `modbus.lock` |
+| **`[paths]`** | `log_file`  | Path to `.log` file  | `logs/modbus.log` |
+
+**Tip**: It's better to specify relative names in default path values,
+so that they work "out of the box" everywhere:
 
 ---
 
-### ⚙️ Installation & Setup
+### ⚙️ Installation & Portability
+The tool is fully portable and can be run directly from a USB drive or any local folder without system-wide installation.
 1. Clone the repository:
     ```bash
     git clone https://github.com/andsyrovatko/s4k-modbus-relay-controller.git
     cd s4k-modbus-relay-controller
     ```
 2. Configure the tool:
-Copy the example config and edit it with your device details:
+Copy the example config and edit it (the script will automatically find it in its own directory):
+* `Linux:`
     ```bash
-    cp config.ini.example config.ini
-    nano config.ini
+    cp config.ini.example config.ini && nano config.ini
     ```
-3. Set executable permissions:
+* `Windows:`
+    ```bash
+    copy config.ini.example config.ini
+    ```
+    (then edit with any text editor)
+3. Permissions (`Linux only`):
     ```bash
     chmod +x modbus_controller.py
     ```
-
+    (to start script as `./modbus_controller.py` not `python modbus_controller.py`)
 ---
 
 ### 🚀 Usage
-0. Use via cli or call from another soft:
+The script supports both Windows and Linux syntax. You can run it from any location by specifying the full path.
 
-    ```bash
-    # Get script help/usage info
-    python3 modbus_controller.py
-    # Output: modbus_controller.py <status|on|off|toggle> <channel>
+| Action | Linux | Windows (CMD/PowerShell) | Result |
+| :--- | :--- | :--- | :--- |
+| **Get Status** | `./modbus_controller.py status 1` | `python modbus_controller.py status 1` | Channel 1 is OFF |
+| **Turn ON** | `./modbus_controller.py on 1` | `python modbus_controller.py on 1` | Channel 1 is turned ON |
+| **Turn OFF** | `./modbus_controller.py off 1` | `python modbus_controller.py off 1` | Channel 1 is turned OFF |
+| **Toggle** | `./modbus_controller.py toggle 1` | `python modbus_controller.py toggle 1` | Channel 1 is turned OFF (if was ON) |
 
-    # Get channel status
-    python3 modbus_controller.py status 8
-    # Output: Channel 8 is OFF
-
-    # Turn a specific channel ON or OFF
-    python3 modbus_controller.py on 8
-    # Output: Channel 8 is turned ON
-
-    # Toggle channel state
-    python3 modbus_controller.py toggle 8
-    # Output: Channel 8 is turned ON
-    ```
+### 📦 Portable Example (Windows)
+Run the script directly from your USB drive (e.g. `F:\`) by specifying the full path:
+```powershell
+python F:\ModBus\modbus_controller.py status 1
+```
 
 ---
 
-### ⚠️ Important Note
-[**!IMPORTANT**]\
-This version currently supports Linux only due to the use of fcntl for process locking. Windows support is planned for future releases.
+### [✓] Verified: Tested on Linux (LMDE 7) and Windows 11.
 
 ---
 
