@@ -1,0 +1,11 @@
+[modbus]
+host = 192.168.X.X     # IP address of the Modbus device
+port = 4196            # Port number for the Modbus device
+unit = 1               # Unit ID for the Modbus channel
+coil_base = 1          # Base address for coils (0 for 0-7 channel use, 1 for 1-8 channel use)
+timeout = 1            # Timeout value in seconds
+max_channel = 7        # Maximum number of channels of the Modbus device model (7 - 0-7, as 8 channels summary)
+
+[paths]
+lock_file = /tmp/modbus_controller.lock
+log_file = /tmp/modbus_controller.log
